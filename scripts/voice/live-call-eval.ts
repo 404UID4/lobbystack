@@ -4,9 +4,10 @@
 // that runs on calls. Agent tools that need the database fail, as they would
 // with the database down. See docs/voice/testing.md.
 //
-// OPENAI_API_KEY=... pnpm voice:eval [--scenario <name>]... [--runs <n>] [--concurrency <n>] [--snapshot <file.json>] [--locale <code>] [--browser]
+// OPENAI_API_KEY=... pnpm voice:eval [--scenario <name>]... [--runs <n>] [--concurrency <n>] [--snapshot <file.json>] [--locale <code>] [--browser] [--export-caller-audio <directory>]
 
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { parseArgs } from "node:util";
 
 import { buildBrowserSessionConfig, buildPhoneSessionConfig, callerIsDone, callerIsLeaving, createAgentModel, createConversationAgent, LiveCallController, liveDelegationEnvironment, SILENCE_CHECK_IN_MS, SILENCE_TIMEOUT_MS, type CallControl, type LiveCallSummary } from "@lobbystack/agent-core";
@@ -15,9 +16,9 @@ import OpenAI from "openai";
 import type { SidebandWS } from "openai/resources/live/sideband/ws";
 import { LiveWS } from "openai/resources/live/ws";
 
+import { callerSpeech, callerWave, CALLER_MODEL, CALLER_VOICE, RATE } from "./caller-audio";
 import { callerLine, END_SILENCE_MS, findScenarios, OPENING } from "./scenarios";
 
-const RATE = 24_000;
 const CHUNK_MS = 100;
 const CHUNK_BYTES = (RATE * 2 * CHUNK_MS) / 1000;
 // The agent has answered once it has been quiet this long after speaking.
@@ -35,6 +36,7 @@ const { values } = parseArgs({
     concurrency: { type: "string", default: "4" },
     snapshot: { type: "string" },
     locale: { type: "string" },
+    "export-caller-audio": { type: "string" },
     // A browser call, as from the website widget: its own instructions, and full-band audio.
     browser: { type: "boolean", default: false },
   },
@@ -53,47 +55,48 @@ const scenarios = findScenarios(values.scenario).map((scenario) => ({
   }),
 }));
 type Scenario = (typeof scenarios)[number];
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+async function loadCallerAudio() {
+  const audio = new Map<string, Buffer>();
+  for (const text of new Set([opening, ...scenarios.flatMap((scenario) => scenario.lines.map((line) => line.text))])) {
+    audio.set(text, await callerSpeech(client, text, values.browser));
+  }
+  return audio;
+}
+
+const exportDirectory = values["export-caller-audio"];
+if (exportDirectory !== undefined) {
+  mkdirSync(exportDirectory, { recursive: true });
+  const files = new Map<string, string>();
+  for (const [text, pcm] of await loadCallerAudio()) {
+    const file = `caller-${String(files.size + 1).padStart(2, "0")}.wav`;
+    writeFileSync(join(exportDirectory, file), callerWave(pcm));
+    files.set(text, file);
+  }
+  const clip = (text: string) => ({ text, file: files.get(text)! });
+  writeFileSync(join(exportDirectory, "manifest.json"), JSON.stringify({
+    model: CALLER_MODEL,
+    voice: CALLER_VOICE,
+    locale,
+    mode: values.browser ? "browser" : "phone",
+    opening: clip(opening),
+    scenarios: scenarios.map(({ name, lines, endSilenceMs }) => ({
+      name,
+      lines: lines.map(({ text, pauseMs }, index) => ({ ...clip(text), pauseMs: index === 0 ? 0 : pauseMs ?? 0 })),
+      endSilenceMs: endSilenceMs ?? END_SILENCE_MS,
+    })),
+  }, null, 2) + "\n");
+  console.log(`Exported ${files.size} caller clips to ${exportDirectory}.`);
+  process.exit(0);
+}
+
 const loaded: BusinessContextSnapshot = values.snapshot ? JSON.parse(readFileSync(values.snapshot, "utf8")) : demoSnapshot;
 // --locale opens the call in that language, with its default greeting.
 const snapshot: BusinessContextSnapshot = values.locale ? { ...loaded, defaultLocale: locale, greeting: defaultGreeting(loaded.displayName, locale) } : loaded;
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const model = createAgentModel(liveDelegationEnvironment());
 if (!model) throw new Error("No delegation model: set OPENAI_API_KEY or the AI_CHAT_* variables.");
-
-// μ-law, as on a phone line.
-function mulaw(sample: number): number {
-  const sign = sample < 0 ? 0x80 : 0;
-  const magnitude = Math.min(Math.abs(sample), 32_635) + 0x84;
-  let exponent = 7;
-  while (exponent > 0 && !(magnitude & (0x4000 >> (7 - exponent)))) exponent -= 1;
-  return ~(sign | (exponent << 4) | ((magnitude >> (exponent + 3)) & 0x0f)) & 0xff;
-}
-function unmulaw(byte: number): number {
-  const value = ~byte & 0xff;
-  const magnitude = ((((value & 0x0f) << 3) + 0x84) << ((value & 0x70) >> 4)) - 0x84;
-  return value & 0x80 ? -magnitude : magnitude;
-}
-
-// Caller audio goes through 8 kHz μ-law, like a phone call. GPT-Live handed
-// calls over less often on phone audio than on full-band audio.
-function phoneLine(pcm: Buffer): Buffer {
-  const narrow: number[] = [];
-  for (let index = 0; index + 6 <= pcm.length; index += 6) {
-    narrow.push(unmulaw(mulaw((pcm.readInt16LE(index) + pcm.readInt16LE(index + 2) + pcm.readInt16LE(index + 4)) / 3)));
-  }
-  const out = Buffer.alloc(narrow.length * 6);
-  narrow.forEach((sample, index) => {
-    const next = narrow[index + 1] ?? sample;
-    for (let step = 0; step < 3; step += 1) out.writeInt16LE(Math.round(sample + ((next - sample) * step) / 3), (index * 3 + step) * 2);
-  });
-  return out;
-}
-
-async function speak(text: string): Promise<Buffer> {
-  const response = await client.audio.speech.create({ model: "gpt-4o-mini-tts", voice: "alloy", input: text, response_format: "pcm" });
-  const pcm = Buffer.from(await response.arrayBuffer());
-  return values.browser ? pcm : phoneLine(pcm);
-}
+const audio = await loadCallerAudio();
 
 // The call's session, with WebSocket audio instead of SIP or WebRTC.
 function sessionConfig() {
@@ -233,9 +236,6 @@ async function run(scenario: Scenario, audio: Map<string, Buffer>, agentModel: N
     setTimeout(() => ws.close(), 1_000);
   }
 }
-
-const audio = new Map<string, Buffer>();
-for (const text of new Set([opening, ...scenarios.flatMap((scenario) => scenario.lines.map((line) => line.text))])) audio.set(text, await speak(text));
 
 const jobs = Array.from({ length: Number(values.runs) }, () => scenarios).flat();
 const results: RunResult[] = [];

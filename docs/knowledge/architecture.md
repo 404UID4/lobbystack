@@ -15,6 +15,8 @@ LobbyStack separates authoritative business facts from retrieved long-form knowl
 
 Embedding vectors are stored at the fixed `vector(1536)` dimension together with a fingerprint of the configured endpoint, model, provider name, dimensions, and revision. Semantic retrieval only compares matching fingerprints; keyword retrieval fills gaps while `knowledge.reembedBusiness` regenerates existing chunk text after a provider change.
 
+OpenAI embeddings default to `text-embedding-3-large` with 1,536 dimensions, so the vector schema and index stay the same. To upgrade a deployment that pins `AI_EMBEDDING_MODEL=text-embedding-3-small`, remove that override or set it to `text-embedding-3-large` on both admin and worker. Restart both services together. The worker queues re-embedding at startup from stored chunks; you don't need to recrawl websites.
+
 ## Spot a website read that stalled
 
 Nothing marks a crawl as stuck, because the worker that would mark it is often the part that's down. Each read of a crawl's status works it out from the timestamps the worker already writes, in `packages/domain/src/server/websiteImportHealth.ts`. A crawl counts as stalled when it still says it's running and:
