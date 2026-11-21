@@ -29,6 +29,7 @@
     "ws": "latest"
   },
   "devDependencies": {
+    "@opentelemetry/api": "latest",
     "@types/node": "latest",
     "posthog-node": "6.0.2",
     "tsup": "latest",

@@ -606,6 +606,9 @@ importers:
         specifier: ^8.22.0
         version: 8.22.1
     devDependencies:
+      '@opentelemetry/api':
+        specifier: latest
+        version: 1.10.0
       '@types/node':
         specifier: latest
         version: 26.6.6
