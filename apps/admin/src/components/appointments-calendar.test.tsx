@@ -31,7 +31,8 @@ async function setup(days = WEEK, items: Array<typeof haircut> = [haircut]) {
   return { grid };
 }
 
-const templates = (grid: HTMLElement) => [...grid.querySelectorAll<HTMLElement>(":scope > div > .grid")].map((element) => element.style.gridTemplateColumns);
+const templates = (grid: HTMLElement) => [...grid.querySelectorAll<HTMLElement>(":scope > div > .grid")]
+  .map((element) => element.style.gridTemplateColumns.replaceAll("minmax(0px,", "minmax(0,"));
 const dayColumn = () => document.querySelector<HTMLElement>('[data-day="2026-09-02"]')!;
 const columnHandle = (index: number) => screen.getAllByTestId("calendar-column-handle")[index]!;
 const rowHandle = (boundary: number) => screen.getAllByTestId("calendar-row-handle")[boundary - 1]!;
@@ -84,7 +85,7 @@ describe("resizing a day column", () => {
     fireEvent.keyDown(columnHandle(0), { key: "ArrowRight" });
     fireEvent.keyDown(columnHandle(1), { key: "ArrowRight" });
     const header = grid.querySelector<HTMLElement>(":scope > div > .grid")!;
-    const tracks = (header.style.gridTemplateColumns.match(/minmax\(0, 1fr\)|\d+px/g) ?? []).length;
+    const tracks = (templates(grid)[0]!.match(/minmax\(0, 1fr\)|\d+px/g) ?? []).length;
     expect(tracks).toBe(4);
     // Every row fills its tracks, so a cell in the second row sits under the same track as its day in the first.
     expect(header.children.length).toBe(tracks * 2);

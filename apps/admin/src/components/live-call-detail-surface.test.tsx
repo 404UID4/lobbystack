@@ -60,7 +60,7 @@ describe("call events timeline", () => {
     const timeline = document.querySelector<HTMLElement>("[data-slot='call-timeline']")!;
     expect(timeline.className.split(" ")).toContain("grid");
     expect(timeline.className).not.toContain("overflow-x-auto");
-    expect(timeline.style.gridTemplateColumns).toBe("repeat(3, minmax(0, 1fr))");
+    expect(timeline.style.gridTemplateColumns).toMatch(/^repeat\(3, minmax\(0(?:px)?, 1fr\)\)$/);
     const columns = [...timeline.children];
     expect(columns.map((column) => column.textContent?.split("detail.events.")[1]?.replace(/Sep.*$/, ""))).toEqual(["received", "connected", "completed"]);
     for (const column of columns) expect(column.className.split(" ")).toEqual(expect.arrayContaining(["min-w-0", "text-center"]));
