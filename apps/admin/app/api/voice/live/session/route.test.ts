@@ -35,7 +35,7 @@ vi.mock("@/lib/live-prototype", () => ({
   endLiveBrowserSession: mocks.hangup,
   getLiveClient: () => ({ live: { create: mocks.create, sessions: { hangup: mocks.openaiHangup } } }),
 }));
-vi.mock("@lobbystack/agent-core/live/session", () => ({ buildBrowserSessionConfig: () => ({ model: "gpt-live-1" }) }));
+vi.mock("@lobbystack/agent-core/live/session", () => ({ buildBrowserSessionConfig: () => ({ model: "gpt-live-1.1" }) }));
 
 import { POST } from "./route";
 
