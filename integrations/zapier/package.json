@@ -14,10 +14,10 @@
     "e2e:local": "node scripts/e2e-local.js"
   },
   "dependencies": {
-    "zapier-platform-core": "latest"
+    "zapier-platform-core": "19.3.0"
   },
   "devDependencies": {
-    "jest": "latest",
+    "jest": "^30.5.2",
     "nock": "^14.0.17"
   },
   "overrides": {

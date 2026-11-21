@@ -15,12 +15,12 @@
   },
   "dependencies": {
     "@lobbystack/shared": "workspace:*",
-    "yaml": "latest",
-    "zod": "latest"
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/node": "latest",
-    "tsup": "latest",
-    "vitest": "latest"
+    "@types/node": "^26.6.6",
+    "tsup": "9.0.0",
+    "vitest": "^5.1.1"
   }
 }

@@ -27,15 +27,15 @@
   "dependencies": {
     "@lobbystack/contracts": "workspace:*",
     "@lobbystack/telemetry": "workspace:*",
-    "dotenv": "latest",
-    "drizzle-orm": "latest",
-    "pg": "latest",
-    "tsx": "latest"
+    "dotenv": "^18.0.10",
+    "drizzle-orm": "^0.45.4",
+    "pg": "^8.23.1",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
-    "@types/node": "latest",
-    "@types/pg": "latest",
-    "drizzle-kit": "latest",
-    "vitest": "latest"
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.11",
+    "vitest": "^5.1.1"
   }
 }

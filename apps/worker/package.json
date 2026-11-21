@@ -20,20 +20,20 @@
     "@lobbystack/shared": "workspace:*",
     "@lobbystack/telemetry": "workspace:*",
     "bullmq": "6.7.7",
-    "drizzle-orm": "latest",
-    "ioredis": "latest",
-    "mammoth": "latest",
+    "drizzle-orm": "^0.45.4",
+    "ioredis": "^6.0.0",
+    "mammoth": "^1.13.0",
     "openai": "7.59.0",
-    "pdf-parse": "latest",
-    "tesseract.js": "latest",
-    "ws": "latest"
+    "pdf-parse": "2.4.5",
+    "tesseract.js": "^7.0.0",
+    "ws": "^8.22.1"
   },
   "devDependencies": {
-    "@opentelemetry/api": "latest",
-    "@types/node": "latest",
+    "@opentelemetry/api": "^1.10.0",
+    "@types/node": "^26.6.6",
     "posthog-node": "6.0.2",
-    "tsup": "latest",
-    "tsx": "latest",
-    "vitest": "latest"
+    "tsup": "9.0.0",
+    "tsx": "^4.23.15",
+    "vitest": "^5.1.1"
   }
 }
