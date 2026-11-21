@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 
-import { logs, type LogRecord, type LoggerProvider } from "@opentelemetry/api-logs";
+import { logs, type LogRecord, type LoggerProvider } from "@opentelemetry/api";
 import { UnrecoverableError } from "bullmq";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -44,7 +44,7 @@ describe("worker failure reporting", () => {
     events.emit("failed", job(5, 5), new Error("Polar API returned 503 for business 8f14e45f-ceea-467a-9a3a-0b2f8f0f1c2d"));
 
     await vi.waitFor(() => expect(mocks.capture).toHaveBeenCalledTimes(1));
-    const [error, distinctId, properties] = mocks.capture.mock.calls[0]!;
+    const [error, { distinctId, properties }] = mocks.capture.mock.calls[0]!;
     expect(error.name).toBe("WorkerJobFailure");
     expect(error.message).toBe("webhook.deliver: Polar API returned 503 for business [id]");
     expect(error.stack).toContain("failureReporting.test.ts");
@@ -106,7 +106,7 @@ describe("worker failure reporting", () => {
     now += 60_000;
     events.emit("error", new Error("connect ECONNREFUSED 127.0.0.1:6379"));
     await vi.waitFor(() => expect(mocks.capture).toHaveBeenCalledTimes(2));
-    const [error, , properties] = mocks.capture.mock.calls[1]!;
+    const [error, { properties }] = mocks.capture.mock.calls[1]!;
     expect(error.name).toBe("WorkerConnectionError");
     expect(properties.$exception_fingerprint).toBe("worker.error:connect ECONNREFUSED [redacted-phone]:[n]");
     // A connection storm logs once per window too; only the count of dropped
@@ -118,7 +118,7 @@ describe("worker failure reporting", () => {
     createFailureReporter({}).reportDispatcherStopped(new Error("dispatcher lost its database"));
 
     await vi.waitFor(() => expect(mocks.capture).toHaveBeenCalledTimes(1));
-    const [error, , properties] = mocks.capture.mock.calls[0]!;
+    const [error, { properties }] = mocks.capture.mock.calls[0]!;
     expect(error.name).toBe("OutboxDispatcherStopped");
     expect(properties.$issue_name).toBe("Outbox dispatcher stopped");
     expect(logRecords).toContainEqual(expect.objectContaining({ body: "outbox.dispatcher_stopped", severityText: "ERROR" }));

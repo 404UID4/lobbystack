@@ -9,7 +9,7 @@ For debugging, run Postgres and Redis in Docker and the admin and worker from so
 You need:
 
 - Docker Desktop. On Windows, keep its default WSL 2 backend.
-- Node 26, which the repo requires, and pnpm 12.15.0: `npm install --global pnpm@12.15.0`.
+- Node 26, which the repo requires, and pnpm 12.21.0: `npm install --global pnpm@12.21.0`.
 - Git.
 
 ### Keep Linux line endings on Windows

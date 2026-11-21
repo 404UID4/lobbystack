@@ -16,7 +16,7 @@ describe("server exception reporting", () => {
     await reportServerError(error, { operation: "fixture", errorId: "reference-123" });
     await reportServerError(error, { operation: "fixture" });
     expect(mocks.capture).toHaveBeenCalledTimes(1);
-    const [safe, , properties] = mocks.capture.mock.calls[0]!;
+    const [safe, { properties }] = mocks.capture.mock.calls[0]!;
     expect(safe.message).not.toContain("private-token");
     expect(safe.stack).not.toContain("caller@example.com");
     expect(safe.stack).toContain("error-reporting.test.ts");
@@ -28,7 +28,7 @@ describe("server exception reporting", () => {
     const cause = Object.assign(new Error("new row violates row-level security policy for table \"calendar_connections\""), { code: "42501", table: "calendar_connections", detail: "Failing row contains (secret-row-value)." });
     const error = new Error("Failed query: insert into \"calendar_connections\" values ($1, $2)\nparams: biz-1,encrypted-access-token", { cause });
     await reportServerError(error, { operation: "fixture" });
-    const [safe, , properties] = mocks.capture.mock.calls[0]!;
+    const [safe, { properties }] = mocks.capture.mock.calls[0]!;
     expect(safe.message).toContain("params: [omitted]");
     expect(safe.message).not.toContain("encrypted-access-token");
     expect(safe.stack).not.toContain("encrypted-access-token");
@@ -54,7 +54,7 @@ describe("server exception reporting", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const cause = Object.assign(new Error("invalid input syntax for type uuid: \"secret-business-value\""), { code: "22P02" });
     await reportServerError(new Error("Failed query: select 1\nparams: secret-business-value", { cause }), { operation: "fixture" });
-    const [, , properties] = mocks.capture.mock.calls[0]!;
+    const [, { properties }] = mocks.capture.mock.calls[0]!;
     expect(properties.cause).toEqual({ name: "Error", message: "invalid input syntax for type uuid: \"[value]\"", code: "22P02" });
   });
   it("does not replace application failures when delivery fails", async () => {
