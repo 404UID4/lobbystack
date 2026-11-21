@@ -31,21 +31,20 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@opentelemetry/api": "^1.10.0",
-    "@opentelemetry/api-logs": "^0.222.0",
-    "@opentelemetry/exporter-logs-otlp-http": "^0.222.0",
-    "@opentelemetry/exporter-metrics-otlp-http": "^0.222.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.222.0",
-    "@opentelemetry/instrumentation-http": "^0.222.0",
-    "@opentelemetry/instrumentation-undici": "^0.32.0",
-    "@opentelemetry/resources": "^2.11.0",
-    "@opentelemetry/sdk-metrics": "^2.11.0",
-    "@opentelemetry/sdk-logs": "^0.222.0",
-    "@opentelemetry/sdk-node": "^0.222.0",
-    "@opentelemetry/sdk-trace-base": "^2.11.0",
-    "posthog-node": "5.55.0"
+    "@opentelemetry/api": "latest",
+    "@opentelemetry/exporter-logs-otlp-http": "latest",
+    "@opentelemetry/exporter-metrics-otlp-http": "latest",
+    "@opentelemetry/exporter-trace-otlp-http": "latest",
+    "@opentelemetry/instrumentation-http": "latest",
+    "@opentelemetry/instrumentation-undici": "latest",
+    "@opentelemetry/resources": "latest",
+    "@opentelemetry/sdk-metrics": "latest",
+    "@opentelemetry/sdk-logs": "latest",
+    "@opentelemetry/sdk-node": "latest",
+    "@opentelemetry/sdk-trace": "latest",
+    "posthog-node": "6.0.2"
   },
   "devDependencies": {
-    "vitest": "^5.0.5"
+    "vitest": "latest"
   }
 }

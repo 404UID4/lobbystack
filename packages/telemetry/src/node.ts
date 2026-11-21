@@ -5,10 +5,13 @@ import {
   SpanStatusCode,
   trace,
   metrics,
+  logs,
+  SeverityNumber,
+  type AnyValue,
+  type Logger,
   type Span,
   type SpanOptions,
 } from "@opentelemetry/api";
-import { logs, SeverityNumber, type AnyValue, type AnyValueMap, type Logger } from "@opentelemetry/api-logs";
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
@@ -16,7 +19,7 @@ import { resourceFromAttributes } from "@opentelemetry/resources";
 import { BatchLogRecordProcessor, type LogRecordProcessor } from "@opentelemetry/sdk-logs";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { NodeSDK } from "@opentelemetry/sdk-node";
-import { BatchSpanProcessor, ParentBasedSampler, TraceIdRatioBasedSampler, type ReadableSpan, type SpanProcessor } from "@opentelemetry/sdk-trace-base";
+import { BatchSpanProcessor, ParentBasedSampler, TraceIdRatioBasedSampler, type ReadableSpan, type SpanProcessor } from "@opentelemetry/sdk-trace";
 import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import { UndiciInstrumentation } from "@opentelemetry/instrumentation-undici";
 import { monitorEventLoopDelay } from "node:perf_hooks";
@@ -89,7 +92,7 @@ export function redactExportLogValue(value: AnyValue, key?: string): AnyValue {
   return value;
 }
 
-function redactLogExportAttributes(attributes: AnyValueMap): AnyValueMap {
+function redactLogExportAttributes(attributes: Attributes): Attributes {
   return Object.fromEntries(Object.entries(attributes).map(([key, value]) => [key, redactExportLogValue(value, key)]));
 }
 
@@ -183,13 +186,13 @@ export async function initializeTelemetry(
     // OTEL_TRACES_SAMPLER wins when a deployment sets one.
     ...(process.env.OTEL_TRACES_SAMPLER ? {} : { sampler: new ParentBasedSampler({ root: new TraceIdRatioBasedSampler(traceSampleRatio()) }) }),
     resource,
-    spanProcessors: [new RedactingSpanProcessor(), new BatchSpanProcessor(new OTLPTraceExporter({ url: `${endpoint}/v1/traces` }))],
+    spanProcessors: [new RedactingSpanProcessor(), new BatchSpanProcessor({ exporter: new OTLPTraceExporter({ url: `${endpoint}/v1/traces` }) })],
     logRecordProcessors,
     instrumentations: [new HttpInstrumentation({ ignoreOutgoingRequestHook: isStorageHttpRequest }), new UndiciInstrumentation({ ignoreRequestHook: isStorageHttpRequest })],
-    metricReader: new PeriodicExportingMetricReader({
+    metricReaders: [new PeriodicExportingMetricReader({
       exporter: new OTLPMetricExporter({ url: `${endpoint}/v1/metrics` }),
       exportIntervalMillis: 15_000,
-    }),
+    })],
   });
 
   try {
@@ -368,7 +371,7 @@ export async function captureExceptionToPostHog(
       flushAt: 1,
       flushInterval: 0,
     });
-    await exceptionClient.captureExceptionImmediate(error, distinctId, properties);
+    await exceptionClient.captureExceptionImmediate(error, { distinctId, properties });
   } catch {
     // Error reporting must never replace the failure it describes.
     console.warn("[telemetry] exception delivery failed");

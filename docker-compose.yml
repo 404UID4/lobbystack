@@ -366,7 +366,7 @@ services:
       retries: 12
 
   caddy:
-    image: caddy:2.10-alpine
+    image: caddy:2.11-alpine
     restart: unless-stopped
     environment:
       APP_HOSTNAME: ${APP_HOSTNAME:-localhost}

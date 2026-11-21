@@ -8,7 +8,7 @@ import { test } from "node:test";
 test("image projection preserves the lockfile and excludes local tooling", () => {
   const directory = mkdtempSync(join(tmpdir(), "lobbystack-image-lock-"));
   try {
-    for (const file of ["pnpm-lock.yaml", "pnpm-workspace.yaml", "patches"]) {
+    for (const file of ["pnpm-lock.yaml", "pnpm-workspace.yaml"]) {
       cpSync(file, join(directory, file), { recursive: true });
     }
     const prepare = resolve(".github/build/prepare-image-workspace.mjs");

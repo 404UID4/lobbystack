@@ -19,21 +19,20 @@
     "@lobbystack/providers": "workspace:*",
     "@lobbystack/shared": "workspace:*",
     "@lobbystack/telemetry": "workspace:*",
-    "bullmq": "^6.3.11",
-    "drizzle-orm": "^0.45.4",
-    "ioredis": "^6.0.0",
-    "mammoth": "^1.13.0",
-    "openai": "^7.28.0",
-    "pdf-parse": "2.4.5",
-    "tesseract.js": "^7.0.0",
-    "ws": "^8.22.1"
+    "bullmq": "6.7.7",
+    "drizzle-orm": "latest",
+    "ioredis": "latest",
+    "mammoth": "latest",
+    "openai": "7.59.0",
+    "pdf-parse": "latest",
+    "tesseract.js": "latest",
+    "ws": "latest"
   },
   "devDependencies": {
-    "@opentelemetry/api-logs": "^0.222.0",
-    "@types/node": "^26.6.6",
-    "posthog-node": "5.55.0",
-    "tsup": "8.5.1",
-    "tsx": "^4.23.15",
-    "vitest": "^5.0.5"
+    "@types/node": "latest",
+    "posthog-node": "6.0.2",
+    "tsup": "latest",
+    "tsx": "latest",
+    "vitest": "latest"
   }
 }
