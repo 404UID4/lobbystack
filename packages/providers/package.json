@@ -22,21 +22,21 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@ai-sdk/openai-compatible": "^3.0.82",
-    "@aws-sdk/client-s3": "^3.1146.0",
-    "@aws-sdk/s3-request-presigner": "^3.1146.0",
+    "@ai-sdk/openai-compatible": "latest",
+    "@aws-sdk/client-s3": "latest",
+    "@aws-sdk/s3-request-presigner": "latest",
     "@lobbystack/shared": "workspace:*",
     "@lobbystack/telemetry": "workspace:*",
-    "ai": "^7.0.159",
-    "libphonenumber-js": "^1.13.15",
-    "luxon": "^3.7.2",
-    "nodemailer": "^10.3.1",
-    "standardwebhooks": "^1.1.1",
-    "stripe": "^23.0.1",
-    "twilio": "^6.1.2"
+    "ai": "latest",
+    "libphonenumber-js": "latest",
+    "luxon": "latest",
+    "nodemailer": "latest",
+    "standardwebhooks": "latest",
+    "stripe": "latest",
+    "twilio": "latest"
   },
   "devDependencies": {
-    "@types/luxon": "^3.7.6",
-    "@types/nodemailer": "^8.0.2"
+    "@types/luxon": "latest",
+    "@types/nodemailer": "latest"
   }
 }
