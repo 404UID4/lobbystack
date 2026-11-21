@@ -3,8 +3,7 @@ packages:
   - mintlify
   - packages/*
 
-# Matches Dependabot's 3-day cooldown (in minutes). A dependency younger than
-# this makes every Dependabot job fail, and Railway then skips the deploy.
+# Apply Dependabot's three-day release cooldown when resolving latest and verifying the lockfile.
 minimumReleaseAge: 4320
 
 overrides:
