@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import Redis from "ioredis";
 import { and, eq, gte, gt, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { UnrecoverableError } from "bullmq";
+import { embedKnowledgeChunks, type KnowledgeEmbeddingProvider } from "./knowledgeEmbeddings";
 
 import { hasSummarizableTranscript, type BusinessHoursExtractor, type BusinessSummarizer, type CallSummarizer } from "@lobbystack/agent-core";
 import { realtimeEventSchema, type JobEnvelope } from "@lobbystack/contracts";
@@ -72,7 +73,7 @@ export type WorkerDependencies = {
   polar?: { recordUsage(input: { eventName: string; externalCustomerId: string; quantity: number; timestamp: string; idempotencyKey: string; businessId: string; usageKind: string }): Promise<void>; createCheckout?(input: { productId: string; customerEmail: string; externalCustomerId: string; successUrl: string; returnUrl: string; idempotencyKey?: string }): Promise<{ checkoutUrl: string; checkoutId: string }>; setCancelAtPeriodEnd?(input: { subscriptionId: string; cancelAtPeriodEnd: boolean }): Promise<void> };
   /** Sets partners' own domains up: Cloudflare for SaaS or Caddy, as partnerFeatures decides, and DNS for partners' TXT records. Without it, their jobs are skipped. */
   customDomains?: CustomDomainProviders;
-  embeddings?: { fingerprint?: string; embed(values: string[], onUsage?: (usage: DurableAiUsage) => Promise<void> | void): Promise<number[][]> };
+  embeddings?: KnowledgeEmbeddingProvider;
   crawler?: { crawl(input: { url: string; limit?: number }): Promise<Array<{ url: string; title?: string; markdown?: string; language?: string }>> };
   /** Calendar providers by name. Without one, its connections are left unsynced. */
   calendars?: CalendarProviders;
@@ -553,15 +554,17 @@ async function dispatchJob(job: JobEnvelope, dependencies: WorkerDependencies, e
         const rowIds = rows.map((row) => row.id);
         // A chunk stored by an older pipeline can exceed the provider's input
         // limit. Embed each split part, then store the parts as their own rows.
-        const batches = rows.map((row) => ({ row, contents: embeddingInputsForChunk(row.content) }));
+        // Write higher sequences first so splitting a chunk cannot shift another
+        // selected row. Request vectors in that same order.
+        const batches = rows.sort((a, b) => b.sequence - a.sequence)
+          .map((row) => ({ row, contents: embeddingInputsForChunk(row.content) }));
         const inputs = batches.flatMap((batch) => batch.contents);
         let embeddings: number[][];
         try {
           await withBusinessTransaction(dependencies.domain.db, { businessId, actorType: "worker" }, async (tx) => {
             await tx.update(knowledgeChunks).set({ embeddingStatus: "pending", embeddingError: null, updatedAt: new Date() }).where(and(eq(knowledgeChunks.businessId, businessId), inArray(knowledgeChunks.id, rowIds)));
           });
-          embeddings = await dependencies.embeddings.embed(inputs);
-          if (embeddings.length !== inputs.length) throw new Error("Embedding provider returned an incomplete re-embedding batch.");
+          embeddings = await embedKnowledgeChunks(dependencies.domain.db, businessId, dependencies.embeddings, inputs);
           if (embeddings.some((embedding) => embedding.length !== 1536 || embedding.some((value) => !Number.isFinite(value)) || embedding.every((value) => value === 0))) {
             throw new Error("Embedding provider returned an incompatible re-embedding vector.");
           }
@@ -573,10 +576,7 @@ async function dispatchJob(job: JobEnvelope, dependencies: WorkerDependencies, e
         }
         await withBusinessTransaction(dependencies.domain.db, { businessId, actorType: "worker" }, async (tx) => {
           let index = 0;
-          // Highest sequence first, so a split's new pieces never shift the
-          // sequence of a chunk still waiting to be processed.
-          const ordered = [...batches].sort((a, b) => b.row.sequence - a.row.sequence);
-          for (const { row, contents } of ordered) {
+          for (const { row, contents } of batches) {
             const [first, ...rest] = contents;
             const embedding = embeddings[index++];
             if (first === undefined || !embedding) throw new Error("Embedding provider returned an incompatible re-embedding vector.");
@@ -1668,11 +1668,10 @@ async function indexKnowledgeText(
   let embeddings: number[][];
   let usage: DurableAiUsage | undefined;
   try {
-    const embeddingStartedAt = performance.now();
-    embeddings = await dependencies.embeddings.embed(chunks, (value) => {
+    embeddings = await embedKnowledgeChunks(dependencies.domain.db, input.businessId, dependencies.embeddings, chunks, (value) => {
       usage = value;
+      embeddingDuration.record(value.latencyMs, { provider: value.provider });
     });
-    embeddingDuration.record(performance.now() - embeddingStartedAt, { provider: usage?.provider ?? "unknown" });
   } catch (error) {
     embeddingFailures.add(1, { operation: "knowledge.index" });
     if (!input.deferFailure) await markKnowledgeDocumentFailed(dependencies.domain, {
@@ -1682,16 +1681,6 @@ async function indexKnowledgeText(
       error: "Knowledge embedding provider failed.",
     });
     throw error;
-  }
-
-  if (embeddings.length !== chunks.length) {
-    if (!input.deferFailure) await markKnowledgeDocumentFailed(dependencies.domain, {
-      businessId: input.businessId,
-      documentId: input.documentId,
-      ...(input.websitePage ? { expectedRevision: input.websitePage.sourceRevision } : {}),
-      error: "Knowledge embedding provider returned an incomplete result.",
-    });
-    throw new Error("Knowledge embedding provider returned an incomplete result.");
   }
 
   const indexStartedAt = performance.now();
